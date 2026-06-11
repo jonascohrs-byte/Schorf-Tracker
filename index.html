@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Schorf-Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Schorf-Tracker">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:linear-gradient(145deg,#0a0f1a 0%,#0f172a 40%,#111827 100%);color:#f8fafc;min-height:100vh;-webkit-text-size-adjust:100%}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);border-bottom:1px solid #1e293b;padding:20px 24px}
+.header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.header-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:20px}
+.header h1{font-size:20px;font-weight:700;letter-spacing:-0.02em}
+.header p{font-size:12px;color:#64748b;margin-top:2px}
+.container{max-width:900px;margin:0 auto;padding:24px 16px}
+.card{background:#1e293b;border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid #334155}
+.card-label{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
+.input-field{padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#f8fafc;font-size:15px;outline:none;font-family:'Inter',sans-serif;width:100%}
+.input-field:focus{border-color:#22c55e}
+.input-sm{width:auto;padding:8px 12px;font-size:14px}
+.btn-primary{padding:12px 32px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:700;cursor:pointer;font-size:15px;box-shadow:0 4px 20px #22c55e40;transition:transform .15s,box-shadow .15s;font-family:'Inter',sans-serif}
+.btn-primary:hover{transform:scale(1.03);box-shadow:0 6px 30px #22c55e60}
+.btn-primary:disabled{background:#334155;box-shadow:none;transform:none;cursor:default}
+.btn-outline{padding:10px 28px;border-radius:10px;background:transparent;font-weight:600;cursor:pointer;font-size:14px;font-family:'Inter',sans-serif}
+.btn-reset{border:1px solid #dc2626;color:#dc2626}
+.weather-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.weather-tile{background:#1e293b;border-radius:14px;padding:16px 18px;border:1px solid #334155;text-align:center}
+.weather-tile .icon{font-size:22px;margin-bottom:4px}
+.weather-tile .label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+.weather-tile .value{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-top:4px}
+.search-result{padding:10px 14px;cursor:pointer;border-bottom:1px solid #1e293b;transition:background .15s}
+.search-result:last-child{border-bottom:none}
+.search-result:hover{background:#1e293b}
+.search-result .name{font-weight:600}
+.search-result .region{color:#64748b;font-size:13px;margin-left:8px}
+.location-display{display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:8px}
+.location-name{font-size:22px;font-weight:700}
+.location-region{font-size:14px;color:#64748b;margin-left:8px}
+.btn-change{background:#334155;border:none;color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif}
+.flex-center{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.mono{font-family:'JetBrains Mono',monospace}
+.form-row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase}
+.infection-warning{margin-top:8px;padding:10px 24px;border-radius:10px;background:#dc262620;border:1px solid #dc262660;font-size:15px;color:#fca5a5;font-weight:600;text-align:center}
+.remaining-info{margin-top:8px;padding:8px 20px;border-radius:10px;background:#0f172a;border:1px solid #334155;font-size:14px;color:#94a3b8;text-align:center}
+.chart-container{position:relative;width:100%;height:240px}
+.chart-container-sm{position:relative;width:100%;height:180px}
+.ref-table{width:100%;border-collapse:collapse;font-size:13px}
+.ref-table th,.ref-table td{padding:8px 6px;text-align:center}
+.ref-table th{border-bottom:1px solid #334155;color:#94a3b8;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:12px}
+.ref-table td{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#f8fafc}
+.ref-table .highlight{background:#22c55e15;color:#22c55e!important}
+.error-box{background:#dc262620;border:1px solid #dc262660;border-radius:12px;padding:14px 20px;color:#fca5a5;font-size:14px;margin-top:16px}
+.summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+.summary-tile{background:#0f172a;border-radius:12px;padding:14px 16px;border:1px solid #334155;text-align:center}
+.summary-tile .s-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+.summary-tile .s-value{font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-top:4px}
+.hidden{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top:2px solid #fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+@media(max-width:600px){
+  .weather-grid{grid-template-columns:1fr}
+  .summary-grid{grid-template-columns:1fr}
+  .weather-tile .value{font-size:18px}
+  .container{padding:16px 10px}
+  .card{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-icon">🍎</div>
+    <div>
+      <h1>Schorf-Tracker</h1>
+      <p>Apfelschorf-Infektionsprognose nach Mills &amp; LaPlante</p>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Standort -->
+  <div class="card">
+    <div class="card-label">Standort</div>
+    <div id="locationSearch">
+      <div style="display:flex;gap:8px">
+        <input type="text" id="searchInput" class="input-field" placeholder="Ort eingeben, z.B. Harsefeld..." style="flex:1">
+        <button class="btn-primary" id="searchBtn" style="padding:10px 20px;font-size:14px">Suchen</button>
+      </div>
+      <div id="searchResults" style="margin-top:8px;background:#0f172a;border-radius:10px;border:1px solid #334155;overflow:hidden" class="hidden"></div>
+    </div>
+    <div id="locationDisplay" class="location-display hidden">
+      <div>
+        <span class="location-name" id="locName"></span>
+        <span class="location-region" id="locRegion"></span>
+      </div>
+      <button class="btn-change" id="changeLocBtn">Ändern</button>
+    </div>
+  </div>
+
+  <div id="mainContent" class="hidden">
+
+    <!-- Wetter -->
+    <div class="weather-grid">
+      <div class="weather-tile"><div class="icon">🌡️</div><div class="label">Aktuelle Temp.</div><div class="value" id="wTemp">—</div></div>
+      <div class="weather-tile"><div class="icon">💧</div><div class="label">Luftfeuchte</div><div class="value" id="wHumid">—</div></div>
+      <div class="weather-tile"><div class="icon">📊</div><div class="label">Akt. Quotient</div><div class="value" id="wQuot">—</div></div>
+    </div>
+
+    <!-- Simulation -->
+    <div class="card" style="text-align:center">
+      <div class="card-label" style="text-align:left">Beginn der Blattfeuchte</div>
+      <div class="form-row" style="justify-content:center;margin-bottom:8px">
+        <div class="form-group">
+          <label>Datum</label>
+          <input type="date" id="startDate" class="input-field input-sm">
+        </div>
+        <div class="form-group">
+          <label>Uhrzeit</label>
+          <input type="time" id="startTime" class="input-field input-sm">
+        </div>
+      </div>
+      <p id="startInfo" style="font-size:13px;color:#64748b;margin-bottom:14px"></p>
+      <div class="flex-center">
+        <button class="btn-primary" id="simBtn" style="font-size:16px;padding:14px 40px">▶ Berechnen</button>
+        <button class="btn-outline btn-reset hidden" id="resetBtn">↺ Zurücksetzen</button>
+      </div>
+    </div>
+
+    <!-- Ergebnis -->
+    <div id="resultSection" class="hidden">
+
+      <div class="card" style="display:flex;flex-direction:column;align-items:center" id="gaugeCard">
+        <svg width="240" height="200" viewBox="0 0 240 200" id="gaugeSvg"></svg>
+        <div class="remaining-info hidden" id="remainingInfo"></div>
+        <div class="infection-warning hidden" id="infectionWarning">⚠️ Schorfinfektionsbedingungen erreicht — Pflanzenschutzmaßnahme empfohlen!</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Zusammenfassung</div>
+        <div class="summary-grid">
+          <div class="summary-tile"><div class="s-label">Nässedauer</div><div class="s-value" id="sumWet">—</div></div>
+          <div class="summary-tile"><div class="s-label">Ø Temperatur</div><div class="s-value" id="sumTemp">—</div></div>
+          <div class="summary-tile"><div class="s-label">Ø Quotient/h</div><div class="s-value" id="sumQuot">—</div></div>
+          <div class="summary-tile"><div class="s-label">Status</div><div class="s-value" id="sumStatus">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Infektionsfortschritt</div>
+        <div class="chart-container"><canvas id="infectionChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Temperaturverlauf</div>
+        <div class="chart-container-sm"><canvas id="tempChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Referenz -->
+    <div class="card">
+      <div class="card-label">Referenztabelle — Stundenquotient je Temperatur</div>
+      <div style="overflow-x:auto"><table class="ref-table" id="refTable"></table></div>
+    </div>
+  </div>
+
+  <div class="error-box hidden" id="errorBox"></div>
+</div>
+
+<script>
+var SCHORF_TABLE = [
+  {temp:0,q:2.1},{temp:4,q:2.1},{temp:4.5,q:2.3},{temp:5,q:2.9},{temp:5.5,q:3.3},
+  {temp:6,q:4.0},{temp:7,q:5.0},{temp:8,q:5.9},{temp:9,q:6.7},{temp:10,q:7.1},
+  {temp:11,q:8.3},{temp:12.5,q:9.1},{temp:14.5,q:10.0},{temp:16,q:11.1},{temp:25,q:9.1}
+];
+
+function getQ(temp) {
+  if (temp < 0 || temp > 25) return 0;
+  for (var i = 0; i < SCHORF_TABLE.length - 1; i++) {
+    var c = SCHORF_TABLE[i], n = SCHORF_TABLE[i+1];
+    if (temp >= c.temp && temp <= n.temp) {
+      return c.q + (temp - c.temp) / (n.temp - c.temp) * (n.q - c.q);
+    }
+  }
+  return 0;
+}
+
+function getTempAt(times, temps, target) {
+  var ms = target.getTime();
+  for (var i = 0; i < times.length - 1; i++) {
+    var t0 = new Date(times[i]).getTime(), t1 = new Date(times[i+1]).getTime();
+    if (ms >= t0 && ms <= t1) return temps[i] + (ms - t0) / (t1 - t0) * (temps[i+1] - temps[i]);
+  }
+  if (ms <= new Date(times[0]).getTime()) return temps[0];
+  return temps[temps.length - 1];
+}
+
+function makeDate(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  var dp = dateStr.split('-');
+  var tp = timeStr.split(':');
+  if (dp.length < 3 || tp.length < 2) return null;
+  var d = new Date(parseInt(dp[0],10), parseInt(dp[1],10)-1, parseInt(dp[2],10), parseInt(tp[0],10), parseInt(tp[1],10), 0, 0);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtTime(d) { return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); }
+function fmtDT(d) { return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+
+var g = function(id) { return document.getElementById(id); };
+
+var selectedLoc = null, weather = null, currentTemp = null;
+var infChart = null, tmpChart = null;
+
+// === API ===
+async function fetchWeather(lat, lon) {
+  var r = await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,relative_humidity_2m,weather_code&hourly=temperature_2m&timezone=auto&past_days=3&forecast_days=2');
+  if (!r.ok) throw new Error("Wetterdaten konnten nicht geladen werden");
+  return r.json();
+}
+
+async function geocode(q) {
+  var r = await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=5&language=de');
+  if (!r.ok) throw new Error("Standortsuche fehlgeschlagen");
+  var d = await r.json();
+  return d.results || [];
+}
+
+// === SEARCH ===
+g('searchBtn').onclick = async function() {
+  var q = g('searchInput').value.trim();
+  if (!q) return;
+  g('searchBtn').textContent = '...';
+  try {
+    var results = await geocode(q);
+    var box = g('searchResults');
+    box.innerHTML = '';
+    if (results.length === 0) {
+      box.innerHTML = '<div style="padding:10px 14px;color:#64748b">Keine Ergebnisse</div>';
+    } else {
+      for (var i = 0; i < results.length; i++) {
+        (function(r) {
+          var div = document.createElement('div');
+          div.className = 'search-result';
+          div.innerHTML = '<span class="name">'+r.name+'</span><span class="region">'+(r.admin1||'')+', '+r.country+'</span>';
+          div.onclick = function() { pickLocation(r); };
+          box.appendChild(div);
+        })(results[i]);
+      }
+    }
+    box.classList.remove('hidden');
+  } catch(e) { showError(e.message); }
+  g('searchBtn').textContent = 'Suchen';
+};
+
+g('searchInput').onkeydown = function(e) { if (e.key === 'Enter') g('searchBtn').click(); };
+
+async function pickLocation(loc) {
+  selectedLoc = { name: loc.name, country: loc.country, lat: loc.latitude, lon: loc.longitude, admin1: loc.admin1 || '' };
+  g('locName').textContent = selectedLoc.name;
+  g('locRegion').textContent = selectedLoc.admin1 + ', ' + selectedLoc.country;
+  g('locationSearch').classList.add('hidden');
+  g('searchResults').classList.add('hidden');
+  g('locationDisplay').classList.remove('hidden');
+  try {
+    weather = await fetchWeather(selectedLoc.lat, selectedLoc.lon);
+    currentTemp = weather.current.temperature_2m;
+    updateWeatherTiles();
+    g('mainContent').classList.remove('hidden');
+    buildRefTable();
+    setDefaultDates();
+    hideError();
+  } catch(e) { showError(e.message); }
+}
+
+g('changeLocBtn').onclick = function() {
+  selectedLoc = null; weather = null; currentTemp = null;
+  g('locationSearch').classList.remove('hidden');
+  g('locationDisplay').classList.add('hidden');
+  g('mainContent').classList.add('hidden');
+  g('searchInput').value = '';
+  g('searchResults').classList.add('hidden');
+  g('resultSection').classList.add('hidden');
+  g('resetBtn').classList.add('hidden');
+};
+
+function updateWeatherTiles() {
+  if (!weather) return;
+  g('wTemp').textContent = weather.current.temperature_2m + '°C';
+  g('wHumid').textContent = weather.current.relative_humidity_2m + '%';
+  var q = currentTemp !== null ? getQ(currentTemp) : 0;
+  g('wQuot').textContent = q > 0 ? q.toFixed(1) + '/h' : '—';
+}
+
+function setDefaultDates() {
+  var now = new Date();
+  var y = now.getFullYear();
+  var m = String(now.getMonth()+1).padStart(2,'0');
+  var d = String(now.getDate()).padStart(2,'0');
+  var today = y+'-'+m+'-'+d;
+  var time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  g('startDate').value = today;
+  g('startDate').max = today;
+  g('startTime').value = time;
+  updateStartInfo();
+}
+
+g('startDate').oninput = updateStartInfo;
+g('startTime').oninput = updateStartInfo;
+
+function updateStartInfo() {
+  var d = g('startDate').value, t = g('startTime').value;
+  if (!d || !t) { g('startInfo').textContent = ''; return; }
+  var chosen = makeDate(d, t);
+  if (!chosen) { g('startInfo').textContent = ''; return; }
+  var diffH = ((Date.now() - chosen.getTime()) / 3600000).toFixed(1);
+  if (diffH > 0) {
+    g('startInfo').innerHTML = '→ <strong style="color:#f8fafc">' + chosen.toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) + '</strong> — ca. <strong style="color:#3b82f6">' + diffH + 'h</strong> her';
+  } else {
+    g('startInfo').textContent = '';
+  }
+}
+
+// === SIMULATION ===
+g('simBtn').onclick = async function() {
+  var d = g('startDate').value, t = g('startTime').value;
+  if (!d || !t) { showError('Bitte Startdatum und Uhrzeit eingeben.'); return; }
+  var startDT = makeDate(d, t);
+  if (!startDT) { showError('Ungültiges Datum/Uhrzeit.'); return; }
+  if (startDT > new Date()) { showError('Startzeitpunkt liegt in der Zukunft.'); return; }
+
+  g('simBtn').innerHTML = '<span class="spinner"></span>Berechne...';
+  g('simBtn').disabled = true;
+  hideError();
+
+  try {
+    weather = await fetchWeather(selectedLoc.lat, selectedLoc.lon);
+    currentTemp = weather.current.temperature_2m;
+    updateWeatherTiles();
+  } catch(e) {
+    showError(e.message);
+    g('simBtn').innerHTML = '▶ Berechnen';
+    g('simBtn').disabled = false;
+    return;
+  }
+
+  var hTimes = weather.hourly.time;
+  var hTemps = weather.hourly.temperature_2m;
+  var now = new Date();
+
+  var history = [];
+  var cumulative = 0;
+  var cursor = new Date(startDT.getTime());
+  var totalMin = 0;
+  var tempSum = 0;
+  var quotSum = 0;
+
+  while (cursor <= now && cumulative < 100) {
+    var tmp = getTempAt(hTimes, hTemps, cursor);
+    var q = getQ(tmp);
+    cumulative = Math.min(100, cumulative + q / 60);
+    totalMin++;
+    tempSum += tmp;
+    quotSum += q;
+
+    history.push({
+      time: fmtTime(cursor),
+      fullTime: fmtDT(cursor),
+      ts: cursor.getTime(),
+      infection: parseFloat(cumulative.toFixed(2)),
+      temp: parseFloat(tmp.toFixed(1))
+    });
+
+    cursor = new Date(cursor.getTime() + 60000);
+  }
+
+  // Thin out for charts
+  if (history.length > 400) {
+    var step = Math.ceil(history.length / 400);
+    var last = history[history.length - 1];
+    history = history.filter(function(_, i) { return i % step === 0; });
+    if (history[history.length - 1] !== last) history.push(last);
+  }
+
+  var finalInf = history.length > 0 ? history[history.length - 1].infection : 0;
+  var avgTemp = totalMin > 0 ? tempSum / totalMin : 0;
+  var avgQuot = totalMin > 0 ? quotSum / totalMin : 0;
+  var reached = finalInf >= 100;
+
+  g('resultSection').classList.remove('hidden');
+  g('resetBtn').classList.remove('hidden');
+
+  drawGauge(finalInf);
+
+  if (reached) {
+    g('infectionWarning').classList.remove('hidden');
+    g('remainingInfo').classList.add('hidden');
+  } else {
+    g('infectionWarning').classList.add('hidden');
+    g('remainingInfo').classList.remove('hidden');
+    var curQ = getQ(currentTemp);
+    var remH = curQ > 0 ? ((100 - finalInf) / curQ).toFixed(1) : '—';
+    g('remainingInfo').innerHTML = 'Bei aktueller Temperatur (' + currentTemp + '°C) bräuchte es noch <strong class="mono" style="color:#f8fafc">' + remH + 'h</strong> durchgehende Blattfeuchte bis zur Infektion';
+  }
+
+  g('sumWet').textContent = (totalMin / 60).toFixed(1) + 'h';
+  g('sumTemp').textContent = avgTemp.toFixed(1) + '°C';
+  g('sumQuot').textContent = avgQuot.toFixed(1) + '/h';
+  g('sumStatus').textContent = reached ? '🔴 Infektion!' : '🟡 ' + finalInf.toFixed(1) + '%';
+  g('sumStatus').style.color = reached ? '#fca5a5' : (finalInf >= 50 ? '#f59e0b' : '#22c55e');
+
+  drawCharts(history);
+  buildRefTable(avgTemp);
+
+  g('simBtn').innerHTML = '▶ Berechnen';
+  g('simBtn').disabled = false;
+  g('gaugeCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+g('resetBtn').onclick = function() {
+  g('resultSection').classList.add('hidden');
+  g('resetBtn').classList.add('hidden');
+  if (infChart) { infChart.destroy(); infChart = null; }
+  if (tmpChart) { tmpChart.destroy(); tmpChart = null; }
+  buildRefTable();
+};
+
+// === GAUGE ===
+function drawGauge(pct) {
+  pct = Math.min(100, Math.max(0, pct));
+  var angle = (pct / 100) * 270 - 135;
+  var r = 90, cx = 120, cy = 120;
+  function p2c(a) {
+    var rad = ((a - 90) * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+  var s = p2c(-135), e = p2c(angle), bg = p2c(135);
+  var la = angle - (-135) > 180 ? 1 : 0;
+  var col = '#22c55e';
+  if (pct >= 80) col = '#dc2626';
+  else if (pct >= 50) col = '#f59e0b';
+
+  var svg = '<path d="M '+s.x+' '+s.y+' A '+r+' '+r+' 0 1 1 '+bg.x+' '+bg.y+'" fill="none" stroke="#1e293b" stroke-width="18" stroke-linecap="round"/>';
+  if (pct > 0) {
+    svg += '<path d="M '+s.x+' '+s.y+' A '+r+' '+r+' 0 '+la+' 1 '+e.x+' '+e.y+'" fill="none" stroke="'+col+'" stroke-width="18" stroke-linecap="round" style="filter:drop-shadow(0 0 8px '+col+'80)"/>';
+  }
+  svg += '<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" fill="#f8fafc" font-size="36" font-weight="800" font-family="\'JetBrains Mono\',monospace">'+pct.toFixed(1)+'%</text>';
+  svg += '<text x="'+cx+'" y="'+(cy+18)+'" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="\'Inter\',sans-serif" letter-spacing="0.05em">INFEKTION</text>';
+  g('gaugeSvg').innerHTML = svg;
+}
+
+// === CHARTS ===
+function drawCharts(data) {
+  var labels = data.map(function(d){return d.time;});
+  var infections = data.map(function(d){return d.infection;});
+  var temps = data.map(function(d){return d.temp;});
+
+  if (infChart) infChart.destroy();
+  infChart = new Chart(g('infectionChart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Infektion %',
+        data: infections,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,0.1)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a', borderColor: '#334155', borderWidth: 1,
+          titleColor: '#f8fafc', bodyColor: '#f8fafc',
+          callbacks: {
+            title: function(items) { return data[items[0].dataIndex] ? data[items[0].dataIndex].fullTime : ''; },
+            label: function(item) { return 'Infektion: ' + item.raw + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
+        y: { min: 0, max: 100, ticks: { color: '#64748b', font: { size: 11 }, callback: function(v){return v+'%';} }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+
+  if (tmpChart) tmpChart.destroy();
+  tmpChart = new Chart(g('tempChart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Temperatur °C',
+        data: temps,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.1)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a', borderColor: '#334155', borderWidth: 1,
+          titleColor: '#f8fafc', bodyColor: '#f8fafc',
+          callbacks: {
+            title: function(items) { return data[items[0].dataIndex] ? data[items[0].dataIndex].fullTime : ''; },
+            label: function(item) { return item.raw + '°C'; }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#64748b', font: { size: 11 }, callback: function(v){return v+'°C';} }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+}
+
+// === REF TABLE ===
+function buildRefTable(highlightTemp) {
+  var ht = highlightTemp !== undefined ? highlightTemp : currentTemp;
+  var html = '<thead><tr><th style="text-align:left;padding:8px 10px;color:#64748b">°C</th>';
+  for (var i = 0; i < SCHORF_TABLE.length; i++) {
+    var r = SCHORF_TABLE[i];
+    var hl = ht !== null && Math.abs(ht - r.temp) < 1.5 ? ' highlight' : '';
+    html += '<th class="'+hl+'">'+(r.temp === 0 ? '0–4' : r.temp)+'</th>';
+  }
+  html += '</tr></thead><tbody><tr><td style="padding:8px 10px;color:#64748b;font-weight:600;text-align:left">Q/h</td>';
+  for (var i = 0; i < SCHORF_TABLE.length; i++) {
+    var r = SCHORF_TABLE[i];
+    var hl = ht !== null && Math.abs(ht - r.temp) < 1.5 ? ' highlight' : '';
+    html += '<td class="'+hl+'">'+r.q+'</td>';
+  }
+  html += '</tr></tbody>';
+  g('refTable').innerHTML = html;
+}
+
+function showError(msg) { g('errorBox').textContent = 'Fehler: '+msg; g('errorBox').classList.remove('hidden'); }
+function hideError() { g('errorBox').classList.add('hidden'); }
+
+buildRefTable();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(err) {
+      console.log('SW registration failed: ', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
